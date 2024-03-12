@@ -29,14 +29,14 @@ class OccupancyGridMap:
         self.map_info.width = num_rows
         self.map_info.height = num_cols
     
-        self.map_info.origin.position.x = grid_origin_in_map_frame[0]
-        self.map_info.origin.position.y = grid_origin_in_map_frame[1]
-        self.map_info.origin.position.z = grid_origin_in_map_frame[2]
+        self.map_info.origin.position.x = float(grid_origin_in_map_frame[0])
+        self.map_info.origin.position.y = float(grid_origin_in_map_frame[1])
+        self.map_info.origin.position.z = float(grid_origin_in_map_frame[2])
 
-        self.map_info.origin.orientation.x = 0
-        self.map_info.origin.orientation.y = 0
-        self.map_info.origin.orientation.z = 0
-        self.map_info.origin.orientation.w = 1
+        self.map_info.origin.orientation.x = 0.0
+        self.map_info.origin.orientation.y = 0.0
+        self.map_info.origin.orientation.z = 0.0
+        self.map_info.origin.orientation.w = 1.0
                 
     def update_log_odds_ratio_in_grid_coords(self, row, col, delta_log_odds):
         assert (row >=0 and row < self.num_rows)
@@ -74,7 +74,7 @@ class HuskyMapper:
     def __init__(self, num_rows, num_cols, meters_per_cell):
         rclpy.init(args=None)
         self.node = rclpy.create_node('occupancy_grid_mapper')
-        self.tf_listener = tf2_ros.BufferClient()
+        self.tf_listener = tf2_ros.BufferClient(self.node,'/your_namespace')
 
         self.odometry_position_noise_std_dev = self.node.declare_parameter("odometry_position_noise_std_dev").value
         self.odometry_orientation_noise_std_dev = self.node.declare_parameter("odometry_orientation_noise_std_dev").value
@@ -102,12 +102,12 @@ class HuskyMapper:
     
         self.mutex = Lock()
 
-        self.occupancy_grid_pub = self.node.create_publisher(OccupancyGrid, '/husky/occupancy_grid', queue_size=1)
-        self.laser_points_marker_pub = self.node.create_publisher(Marker, '/husky/debug/laser_points', queue_size=1)
-        self.robot_pose_pub = self.node.create_publisher(PoseStamped, '/husky/debug/robot_pose', queue_size=1)
+        self.occupancy_grid_pub = self.node.create_publisher(OccupancyGrid, '/husky/occupancy_grid', 10)
+        self.laser_points_marker_pub = self.node.create_publisher(Marker, '/husky/debug/laser_points', 10)
+        self.robot_pose_pub = self.node.create_publisher(PoseStamped, '/husky/debug/robot_pose', 10)
 
-        self.laser_sub = self.node.create_subscription(LaserScan, '/husky/scan', self.laser_scan_callback, queue_size=1)
-        self.odometry_sub = self.node.create_subscription(Odometry, '/husky/odometry/ground_truth', self.odometry_callback, queue_size=1)
+        self.laser_sub = self.node.create_subscription(LaserScan, '/husky/scan', self.laser_scan_callback, 10)
+        self.odometry_sub = self.node.create_subscription(Odometry, '/husky/odometry/ground_truth', self.odometry_callback, 10)
         
     def odometry_callback(self, msg):
         self.mutex.acquire()
@@ -128,10 +128,7 @@ class HuskyMapper:
         #       and map, which is where odometry messages are expressed in. In fact, odometry 
         #       messages from the Husky are transformations from husky_1/base_link to map 
         # 
-        # self.q_map_baselink = np.array([msg.pose.pose.orientation.x,
-        #                                msg.pose.pose.orientation.y,
-        #                                msg.pose.pose.orientation.z,
-        #                                msg.pose.pose.orientation.w])
+        #self.q_map_baselink = np.array([x, y, z, w])                            msg.pose.pose.orientation.w])
         
         # Corrupting the quaternion with noise in yaw, because we have configured the simulator
         # to return noiseless orientation measurements.
@@ -155,7 +152,6 @@ class HuskyMapper:
         # TODO: populate the quaternion from the frame husky_1/base_laser to the map frame 
         #       note: you have access to the static quaternion from husky_1/base_laser to 
         #       husky_1/base_link
-        # self.q_map_baselaser = tr.quaternion_multiply(self.q_baselink_baselaser, self.q_map_baselink)
         self.q_map_baselaser = tr.quaternion_multiply(self.q_baselink_baselaser, self.q_map_baselink)
 
         #
@@ -167,17 +163,13 @@ class HuskyMapper:
         #
         self.R_map_baselaser = np.dot(tr.quaternion_matrix(self.q_map_baselaser)[0:3, 0:3],
                                      tr.quaternion_matrix(self.q_baselink_baselaser)[0:3, 0:3])
-
         #
         # TODO: populate the origin of the frame husky_1/base_laser in coordinates of the map frame 
         #       note: you have access to the static rotation matrix from husky_1/base_laser to 
         #       husky_1/base_link and also to the origin of the husky_1/base_laser frame in coordinates of
         #       frame husky_1/base_link
-        # self.p_map_baselaser = np.dot(tr.translation_matrix(self.p_baselink_baselaser),
-        #                               tr.translation_matrix(self.p_map_baselink))[0:3, 3]
         self.p_map_baselaser = np.dot(tr.translation_matrix(self.p_baselink_baselaser),
                                       tr.translation_matrix(self.p_map_baselink))[0:3, 3]
-
         self.mutex.release()
 
         

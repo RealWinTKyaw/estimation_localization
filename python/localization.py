@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
-import rclpy
-import tf2_ros
-from tf2_ros import TransformBroadcaster as tr
-from rclpy.node import Node
-from std_msgs.msg import String, Header, ColorRGBA
-from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
-from geometry_msgs.msg import Twist, PoseStamped, Point
-from sensor_msgs.msg import LaserScan
-from visualization_msgs.msg import Marker
-from math import sqrt, cos, sin, pi, atan2
-from threading import Thread, Lock
-from math import pi, log, exp
-import random
 import numpy as np
 from scipy.optimize import least_squares
-import sys
 
 
 class Landmark(object):
@@ -256,7 +242,7 @@ if __name__ == "__main__":
     
     
     import matplotlib
-    matplotlib.use('Qt4Agg')
+    matplotlib.use('Qt5Agg')
     import matplotlib.pyplot as plt
 
     
